@@ -1,4 +1,4 @@
-# Loadstone
+# PulseCLI
 
 A simple, beginner-friendly HTTP load testing tool built in Python.
 
