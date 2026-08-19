@@ -2,14 +2,16 @@
 Entry point for the command line.
 
 This is where the program starts when you run:
-    python -m app.cli --url https://example.com --users 10 --duration 30
+    py -m app.cli --url https://example.com --users 10 --duration 30
 """
 
 import argparse
+import asyncio
 import sys
 
 from app.config import build_config
 from app.exceptions import ConfigError
+from app.runner import run_load_test
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -77,6 +79,21 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  Virtual Users:  {config.users}")
     print(f"  Duration:       {config.duration} seconds")
     print(f"  Timeout:        {config.timeout} seconds")
+
+    print(f"\nRunning {config.users} virtual users for {config.duration} seconds...")
+    results = asyncio.run(
+        run_load_test(config.url, config.users, config.duration, config.timeout)
+    )
+
+    # Temporary raw confirmation output for Stage 4.
+    # Stage 5 turns this into real metrics (min/max/avg/percentiles/RPS);
+    # Stage 6 turns THAT into the final "LOAD TEST RESULTS" report format.
+    # This is just proof, right now, that concurrency actually happened.
+    succeeded = sum(1 for r in results if r.success)
+    failed = len(results) - succeeded
+    print(f"\nTotal requests collected: {len(results)}")
+    print(f"  Succeeded: {succeeded}")
+    print(f"  Failed:    {failed}")
     return 0
 
 
