@@ -8,9 +8,11 @@ This is where the program starts when you run:
 import argparse
 import asyncio
 import sys
+import time
 
 from app.config import build_config
 from app.exceptions import ConfigError
+from app.metrics import calculate_metrics
 from app.runner import run_load_test
 
 
@@ -81,19 +83,26 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  Timeout:        {config.timeout} seconds")
 
     print(f"\nRunning {config.users} virtual users for {config.duration} seconds...")
+    start = time.perf_counter()
     results = asyncio.run(
         run_load_test(config.url, config.users, config.duration, config.timeout)
     )
+    elapsed = time.perf_counter() - start
 
-    # Temporary raw confirmation output for Stage 4.
-    # Stage 5 turns this into real metrics (min/max/avg/percentiles/RPS);
-    # Stage 6 turns THAT into the final "LOAD TEST RESULTS" report format.
-    # This is just proof, right now, that concurrency actually happened.
-    succeeded = sum(1 for r in results if r.success)
-    failed = len(results) - succeeded
-    print(f"\nTotal requests collected: {len(results)}")
-    print(f"  Succeeded: {succeeded}")
-    print(f"  Failed:    {failed}")
+    metrics = calculate_metrics(results, elapsed)
+
+    # Temporary raw confirmation output for Stage 5.
+    # Stage 6 turns this into the final "LOAD TEST RESULTS" report format.
+    # This proves the math is right before we worry about how it looks.
+    print(f"\nActual elapsed time: {elapsed:.2f}s (requested: {config.duration}s)")
+    print(f"Total Requests: {metrics.total_requests}")
+    print(f"Successful:     {metrics.successful}")
+    print(f"Failed:         {metrics.failed}")
+    print(f"Avg Response Time: {metrics.avg_response_time:.3f}s")
+    print(f"Min Response Time: {metrics.min_response_time:.3f}s")
+    print(f"Max Response Time: {metrics.max_response_time:.3f}s")
+    print(f"Requests/sec:   {metrics.requests_per_second:.2f}")
+    print(f"Error Rate:     {metrics.error_rate:.2f}%")
     return 0
 
 
