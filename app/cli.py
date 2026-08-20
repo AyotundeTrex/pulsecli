@@ -13,6 +13,7 @@ import time
 from app.config import build_config
 from app.exceptions import ConfigError
 from app.metrics import calculate_metrics
+from app.reporter import format_report
 from app.runner import run_load_test
 
 
@@ -75,14 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     # Temporary confirmation output for Stage 2.
     # In Stage 6 this gets replaced by the real "LOAD TEST RESULTS" report —
     # for now, printing the resolved config is how we prove parsing + validation work.
-    print("Configuration loaded successfully:")
-    print(f"  Target URL:     {config.url}")
-    print(f"  Method:         {config.method}")
-    print(f"  Virtual Users:  {config.users}")
-    print(f"  Duration:       {config.duration} seconds")
-    print(f"  Timeout:        {config.timeout} seconds")
-
-    print(f"\nRunning {config.users} virtual users for {config.duration} seconds...")
+    print(f"Running {config.users} virtual users against {config.url} for {config.duration}s...")
     start = time.perf_counter()
     results = asyncio.run(
         run_load_test(config.url, config.users, config.duration, config.timeout)
@@ -91,18 +85,8 @@ def main(argv: list[str] | None = None) -> int:
 
     metrics = calculate_metrics(results, elapsed)
 
-    # Temporary raw confirmation output for Stage 5.
-    # Stage 6 turns this into the final "LOAD TEST RESULTS" report format.
-    # This proves the math is right before we worry about how it looks.
-    print(f"\nActual elapsed time: {elapsed:.2f}s (requested: {config.duration}s)")
-    print(f"Total Requests: {metrics.total_requests}")
-    print(f"Successful:     {metrics.successful}")
-    print(f"Failed:         {metrics.failed}")
-    print(f"Avg Response Time: {metrics.avg_response_time:.3f}s")
-    print(f"Min Response Time: {metrics.min_response_time:.3f}s")
-    print(f"Max Response Time: {metrics.max_response_time:.3f}s")
-    print(f"Requests/sec:   {metrics.requests_per_second:.2f}")
-    print(f"Error Rate:     {metrics.error_rate:.2f}%")
+    print()
+    print(format_report(config, metrics))
     return 0
 
 
